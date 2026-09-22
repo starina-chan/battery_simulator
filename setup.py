@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer="starina-chan",
     maintainer_email="154484150+starina-chan@users.noreply.github.com",
-    description="Simulates a Li-ion battery discharging over time, draining faster under cmd_vel load, publishing sensor_msgs/BatteryState",
+    description="Simulates a Li-ion or LiPo battery discharging over time, draining faster under cmd_vel load, publishing sensor_msgs/BatteryState",
     license="MIT",
     entry_points={
         "console_scripts": [

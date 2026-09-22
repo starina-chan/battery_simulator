@@ -1,6 +1,7 @@
 battery_simulator:
   ros__parameters:
     update_rate_hz: 2.0
+    battery_chemistry: "li_ion"
     design_capacity_ah: 2.0
     cell_count: 3
     idle_current_a: 9.0

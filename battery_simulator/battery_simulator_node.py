@@ -5,26 +5,72 @@ from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
 
-_CELL_VOLTAGE_BY_STATE_OF_CHARGE = (
-    (0.00, 3.00),
-    (0.10, 3.40),
-    (0.20, 3.55),
-    (0.40, 3.70),
-    (0.70, 3.85),
-    (0.90, 4.00),
+_LI_ION_CELL_VOLTAGE_BY_STATE_OF_CHARGE = (
+    (0.00, 2.50),
+    (0.05, 3.20),
+    (0.10, 3.60),
+    (0.15, 3.71),
+    (0.20, 3.73),
+    (0.25, 3.75),
+    (0.30, 3.77),
+    (0.35, 3.79),
+    (0.40, 3.80),
+    (0.45, 3.82),
+    (0.50, 3.84),
+    (0.55, 3.85),
+    (0.60, 3.87),
+    (0.65, 3.91),
+    (0.70, 3.95),
+    (0.75, 3.98),
+    (0.80, 4.02),
+    (0.85, 4.08),
+    (0.90, 4.11),
+    (0.95, 4.15),
     (1.00, 4.20),
 )
 
+_LIPO_CELL_VOLTAGE_BY_STATE_OF_CHARGE = (
+    (0.00, 3.27),
+    (0.05, 3.61),
+    (0.10, 3.69),
+    (0.15, 3.71),
+    (0.20, 3.73),
+    (0.25, 3.75),
+    (0.30, 3.77),
+    (0.35, 3.79),
+    (0.40, 3.80),
+    (0.45, 3.82),
+    (0.50, 3.84),
+    (0.55, 3.85),
+    (0.60, 3.87),
+    (0.65, 3.91),
+    (0.70, 3.95),
+    (0.75, 3.98),
+    (0.80, 4.02),
+    (0.85, 4.08),
+    (0.90, 4.11),
+    (0.95, 4.15),
+    (1.00, 4.20),
+)
 
-def _interpolate_cell_voltage(state_of_charge):
+_CELL_VOLTAGE_CURVE_BY_CHEMISTRY = {
+    "li_ion": _LI_ION_CELL_VOLTAGE_BY_STATE_OF_CHARGE,
+    "lipo": _LIPO_CELL_VOLTAGE_BY_STATE_OF_CHARGE,
+}
+
+_POWER_SUPPLY_TECHNOLOGY_BY_CHEMISTRY = {
+    "li_ion": BatteryState.POWER_SUPPLY_TECHNOLOGY_LION,
+    "lipo": BatteryState.POWER_SUPPLY_TECHNOLOGY_LIPO,
+}
+
+
+def _interpolate_cell_voltage(state_of_charge, cell_voltage_curve):
     soc = min(max(state_of_charge, 0.0), 1.0)
-    for (lower_soc, lower_v), (upper_soc, upper_v) in pairwise(
-        _CELL_VOLTAGE_BY_STATE_OF_CHARGE
-    ):
+    for (lower_soc, lower_v), (upper_soc, upper_v) in pairwise(cell_voltage_curve):
         if soc <= upper_soc:
             fraction = (soc - lower_soc) / (upper_soc - lower_soc)
             return lower_v + fraction * (upper_v - lower_v)
-    return _CELL_VOLTAGE_BY_STATE_OF_CHARGE[-1][1]
+    return cell_voltage_curve[-1][1]
 
 
 class BatterySimulatorNode(Node):
@@ -32,6 +78,7 @@ class BatterySimulatorNode(Node):
         super().__init__("battery_simulator")
 
         self.declare_parameter("update_rate_hz", 2.0)
+        self.declare_parameter("battery_chemistry", "li_ion")
         self.declare_parameter("design_capacity_ah", 2.0)
         self.declare_parameter("cell_count", 3)
         self.declare_parameter("idle_current_a", 9.0)
@@ -41,6 +88,11 @@ class BatterySimulatorNode(Node):
         self.declare_parameter("battery_frame_id", "base_link")
 
         self.update_rate_hz = self.get_parameter("update_rate_hz").value
+        battery_chemistry = self.get_parameter("battery_chemistry").value
+        self.cell_voltage_curve = _CELL_VOLTAGE_CURVE_BY_CHEMISTRY[battery_chemistry]
+        self.power_supply_technology = _POWER_SUPPLY_TECHNOLOGY_BY_CHEMISTRY[
+            battery_chemistry
+        ]
         self.design_capacity_ah = self.get_parameter("design_capacity_ah").value
         self.cell_count = self.get_parameter("cell_count").value
         self.idle_current_a = self.get_parameter("idle_current_a").value
@@ -88,7 +140,7 @@ class BatterySimulatorNode(Node):
         self.charge_ah = min(max(self.charge_ah, 0.0), self.design_capacity_ah)
         percentage = self.charge_ah / self.design_capacity_ah
         is_empty = self.charge_ah <= 0.0
-        cell_voltage = _interpolate_cell_voltage(percentage)
+        cell_voltage = _interpolate_cell_voltage(percentage, self.cell_voltage_curve)
 
         battery_msg = BatteryState()
         battery_msg.header.stamp = self.get_clock().now().to_msg()
@@ -110,7 +162,7 @@ class BatterySimulatorNode(Node):
             if is_empty
             else BatteryState.POWER_SUPPLY_HEALTH_GOOD
         )
-        battery_msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
+        battery_msg.power_supply_technology = self.power_supply_technology
         battery_msg.present = True
 
         self.battery_pub.publish(battery_msg)
