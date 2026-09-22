@@ -1,0 +1,10 @@
+battery_simulator:
+  ros__parameters:
+    update_rate_hz: 2.0
+    design_capacity_ah: 2.0
+    cell_count: 3
+    idle_current_a: 9.0
+    load_current_per_linear_mps: 6.0
+    load_current_per_angular_radps: 2.0
+    cmd_vel_timeout_s: 1.0
+    battery_frame_id: "base_link"
