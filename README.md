@@ -34,6 +34,50 @@ LiPo fuel-gauge profile (`mawildoer/battery` on GitHub) for the LiPo curve.
 ros2 launch battery_simulator battery_simulator.launch.py
 ```
 
+## Example output
+
+`ros2 topic echo /battery_state`, idle (no recent `/cmd_vel`), `li_ion`
+default, at 75% charge:
+
+```yaml
+header:
+  stamp:
+    sec: 1790069829
+    nanosec: 895543071
+  frame_id: base_link
+voltage: 11.940000104904175
+temperature: 0.0
+current: -9.0
+charge: 1.5
+capacity: 2.0
+design_capacity: 2.0
+percentage: 0.75
+power_supply_status: 2
+power_supply_health: 1
+power_supply_technology: 2
+present: true
+cell_voltage:
+- 3.9800000190734863
+- 3.9800000190734863
+- 3.9800000190734863
+cell_temperature: []
+location: ''
+serial_number: ''
+```
+
+| Field | Meaning |
+|---|---|
+| `voltage` | `cell_voltage * cell_count` |
+| `current` | `idle_current_a` plus load current, negated - negative means discharging, positive would mean charging (per the message's own convention); this node only discharges, so it's always negative |
+| `charge` / `capacity` / `design_capacity` | Ah remaining / full-charge capacity - `capacity` always equals `design_capacity_ah`, no degradation modeled |
+| `percentage` | `charge / design_capacity` |
+| `power_supply_status` | `0` UNKNOWN, `1` CHARGING, `2` DISCHARGING, `3` NOT_CHARGING (once empty), `4` FULL |
+| `power_supply_health` | `0` UNKNOWN, `1` GOOD, `3` DEAD (once empty) |
+| `power_supply_technology` | `2` LION or `3` LIPO, matching `battery_chemistry` |
+| `present` | Always `true` |
+| `cell_voltage` | One entry per `cell_count`, all identical - no cell-to-cell imbalance modeled |
+| `temperature`, `cell_temperature`, `location`, `serial_number` | Left at message defaults - not simulated |
+
 ## Parameters (`config/battery_simulator.yaml`)
 
 | Param | Default | Meaning |
